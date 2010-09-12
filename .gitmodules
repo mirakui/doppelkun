@@ -1,0 +1,3 @@
+[submodule "gena"]
+	path = gena
+	url = git@github.com:mirakui/gena.git
