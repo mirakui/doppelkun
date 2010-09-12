@@ -23,9 +23,9 @@ $since_id_file       = Gena::FileDB.new 'tmp/since_id',       :base=>__FILE__
 $reply_since_id_file = Gena::FileDB.new 'tmp/reply_since_id', :base=>__FILE__
 
 $log = Logger.new(STDOUT)
-$log.level = Logger::DEBUG
-#$log = Logger.new(File.join(BASE_DIR, 'log', 'doppelkun.log'), 'daily')
-#$log.level = $DEBUG ? Logger::DEBUG : Logger::INFO
+#$log.level = Logger::DEBUG
+$log = Logger.new(File.join(BASE_DIR, 'log', 'doppelkun.log'), 'daily')
+$log.level = $DEBUG ? Logger::DEBUG : Logger::INFO
 
 def retry_on(retry_count_max, sleep_time=1)
   retry_count = 0
@@ -51,10 +51,12 @@ def retarget(tw, target=nil)
 
   if target.nil?
     #friends = tw.my(:followers).map {|f| f.screen_name}
+    target_old_id = tw.show(target_old)['id']
     followers_ids = tw.followers_ids
     $log.debug "followers=(#{followers_ids.length})#{followers_ids.join ','}"
 
-    target = followers_ids.sample
+    target_id = (followers_ids - [target_old_id]).sample
+    target = tw.show(target_id)['screen_name']
   end
   $log.debug "target=#{target}"
 
@@ -140,12 +142,10 @@ def forward_replies(tw)
       break
     end
 
-    description = mention['text']
-    status      = description.scan(/^[^\s]+?\s(.*)$/).first.first
+    #status      = description.scan(/^[^\s]+?\s(.*)$/).first.first
+    status      = description
     status      = URI.escape(status, /[&]/).force_encoding('utf-8')
     from        = mention['user']['screen_name']
-    debugger
-    #from, status = *(description.scan(/^([\s]+)\s(.*)$/).first)
     if from == target 
       $log.info "didn't sent a message because from == target(#{target}), status_id:#{status_id}"
     else
@@ -178,7 +178,8 @@ begin
 
   tw = nil
   retry_on(3) do
-    tw = Gena::Twitter.load_pit($DEBUG ? 'doppelkun_debug' : 'doppelkun')
+    #tw = Gena::Twitter.load_pit('mirakuitest')
+    tw = Gena::Twitter.load_pit('doppelkun')
     tw.logger = $log
   end
 
@@ -187,6 +188,8 @@ begin
     retarget(tw, ARGV.shift)
   when 'announce'
     announce_target(tw)
+  when 'test'
+    forward_replies(tw)
   else
     mirror_post(tw)
   end
